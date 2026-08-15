@@ -1,0 +1,32 @@
+YOLOv8 Baseline Error Analysis
+
+Model:
+YOLOv8n baseline model trained on the NEU-DET dataset.
+
+Inspection:
+5 validation images were inspected from each of the 6 defect classes.
+Total images inspected: 30.
+
+Classes:
+Crazing
+Inclusion
+Patches
+Pitted Surface
+Rolled-in Scale
+Scratches
+
+Overall Results:
+Precision: 0.6583
+Recall: 0.6725
+mAP@50: 0.7193
+mAP@50-95: 0.3775
+
+Observation:
+Crazing and rolled-in scale showed weaker detection performance
+than the other defect classes.
+
+Patches, inclusion, pitted surface and scratches performed better.
+
+Conclusion:
+The baseline model detects all six defect categories, but
+crazing and rolled-in scale need further improvement.
