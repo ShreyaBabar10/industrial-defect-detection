@@ -16,34 +16,29 @@ def train_model():
 
     model_output.mkdir(parents=True, exist_ok=True)
 
-    print("Starting improved YOLO training...")
+    print("Starting resolution experiment...")
     print(f"Dataset configuration: {data_config}")
 
     model = YOLO("yolov8n.pt")
 
     model.train(
         data=str(data_config),
-        epochs=40,
-        imgsz=224,
+        epochs=30,
+        imgsz=256,
         batch=16,
         project=str(model_output),
-        name="neu_defect_detector_improved",
+        name="neu_defect_detector_256",
         pretrained=True,
-        patience=10,
+        patience=8,
         workers=2,
-        degrees=5,
-        translate=0.1,
-        scale=0.3,
-        fliplr=0.5,
-        mosaic=1.0,
         verbose=True
     )
 
     print()
-    print("Improved training completed.")
+    print("Resolution experiment completed.")
     print(
         f"Results saved in: "
-        f"{model_output / 'neu_defect_detector_improved'}"
+        f"{model_output / 'neu_defect_detector_256'}"
     )
 
 
