@@ -16,29 +16,35 @@ def train_model():
 
     model_output.mkdir(parents=True, exist_ok=True)
 
-    print("Starting YOLO training...")
+    print("Starting improved YOLO training...")
     print(f"Dataset configuration: {data_config}")
 
-    # Start with a lightweight pretrained YOLO model.
-    # This keeps the first training run practical on a local machine.
     model = YOLO("yolov8n.pt")
 
-    results = model.train(
+    model.train(
         data=str(data_config),
-        epochs=30,
-        imgsz=200,
+        epochs=40,
+        imgsz=224,
         batch=16,
         project=str(model_output),
-        name="neu_defect_detector",
+        name="neu_defect_detector_improved",
         pretrained=True,
-        patience=8,
+        patience=10,
         workers=2,
+        degrees=5,
+        translate=0.1,
+        scale=0.3,
+        fliplr=0.5,
+        mosaic=1.0,
         verbose=True
     )
 
     print()
-    print("Training completed.")
-    print(f"Results saved in: {model_output / 'neu_defect_detector'}")
+    print("Improved training completed.")
+    print(
+        f"Results saved in: "
+        f"{model_output / 'neu_defect_detector_improved'}"
+    )
 
 
 if __name__ == "__main__":
