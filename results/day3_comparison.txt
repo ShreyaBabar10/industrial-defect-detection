@@ -1,0 +1,21 @@
+YOLOv8 Training Experiment Comparison
+
+Baseline Model:
+Precision: 0.6583
+Recall: 0.6725
+mAP@50: 0.7193
+mAP@50-95: 0.3775
+
+Improved Training Configuration:
+Precision: 0.6036
+Recall: 0.6893
+mAP@50: 0.6973
+mAP@50-95: 0.3678
+
+Observation:
+The modified training configuration increased recall slightly,
+but precision and both mAP metrics decreased.
+
+Conclusion:
+The baseline configuration performed better overall and will
+be retained as the preferred model for the next stage.
