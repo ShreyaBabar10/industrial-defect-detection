@@ -5,10 +5,11 @@ __pycache__/
 .ipynb_checkpoints/
 
 data/
+Data/
 
-models/*.pt
-models/*.onnx
-models/*.engine
+# Trained models and YOLO outputs
+models/
+yolov8n.pt
 
 runs/
 outputs/
