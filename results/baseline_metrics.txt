@@ -1,0 +1,25 @@
+Baseline YOLOv8n Model - NEU-DET
+
+Training:
+Epochs: 30
+Image Size: 224
+Batch Size: 16
+Device: CPU
+
+Validation:
+Images: 360
+Instances: 854
+
+Overall Performance:
+Precision: 0.6583
+Recall: 0.6725
+mAP@50: 0.7193
+mAP@50-95: 0.3775
+
+Class-wise mAP@50:
+Crazing: 0.467
+Inclusion: 0.807
+Patches: 0.940
+Pitted Surface: 0.821
+Rolled-in Scale: 0.487
+Scratches: 0.794
