@@ -138,8 +138,16 @@ def home():
 def health_check():
     return {
         "status": "healthy",
-        "model": "ONNX",
-        "image_size": 256
+        "model": "best.onnx",
+        "model_format": "ONNX",
+        "model_exists": model_path.exists(),
+        "image_size": 256,
+        "supported_formats": [
+            "jpg",
+            "jpeg",
+            "png"
+        ],
+        "max_file_size_mb": 5
     }
 
 
