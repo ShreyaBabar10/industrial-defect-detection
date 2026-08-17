@@ -5,7 +5,40 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from ultralytics import YOLO
+
+
+class BoundingBox(BaseModel):
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+
+class Detection(BaseModel):
+    class_id: int
+    class_name: str
+    confidence: float
+    bounding_box: BoundingBox
+
+
+class ImageSize(BaseModel):
+    width: int
+    height: int
+
+
+class PredictResponse(BaseModel):
+    success: bool
+    filename: str
+    model: str
+    confidence_threshold: float
+    inference_time_ms: float
+    image_size: ImageSize
+    detection_count: int
+    prediction_image: str
+    prediction_url: str
+    detections: list[Detection]
 
 
 project_dir = Path(__file__).resolve().parents[2]
@@ -77,7 +110,10 @@ def health_check():
     }
 
 
-@app.post("/predict")
+@app.post(
+    "/predict",
+    response_model=PredictResponse
+)
 async def predict(
     file: UploadFile = File(...),
     confidence: float = Query(
