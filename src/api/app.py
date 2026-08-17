@@ -1,0 +1,121 @@
+from pathlib import Path
+
+import cv2
+import numpy as np
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from ultralytics import YOLO
+
+
+# Project root
+project_dir = Path(__file__).resolve().parents[2]
+
+# ONNX model
+model_path = (
+    project_dir
+    / "models"
+    / "neu_defect_detector_256"
+    / "weights"
+    / "best.onnx"
+)
+
+
+app = FastAPI(
+    title="Industrial Defect Detection API",
+    version="1.0.0",
+)
+
+
+# Load ONNX model once when the API starts
+if not model_path.exists():
+    raise FileNotFoundError(
+        f"ONNX model not found: {model_path}"
+    )
+
+model = YOLO(str(model_path))
+
+
+@app.get("/")
+def home():
+    return {
+        "message": "Industrial Defect Detection API is running."
+    }
+
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "model": "ONNX",
+        "image_size": 256
+    }
+
+
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload a valid image file."
+        )
+
+    # Read uploaded image
+    image_bytes = await file.read()
+
+    if not image_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty."
+        )
+
+    # Convert bytes to OpenCV image
+    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+    if image is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to decode the uploaded image."
+        )
+
+    # Run ONNX inference
+    results = model.predict(
+        source=image,
+        imgsz=256,
+        conf=0.25,
+        verbose=False
+    )
+
+    result = results[0]
+
+    detections = []
+
+    for box in result.boxes:
+        class_id = int(box.cls[0])
+        confidence = float(box.conf[0])
+
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+
+        detections.append({
+            "class_id": class_id,
+            "class_name": result.names[class_id],
+            "confidence": round(confidence, 4),
+            "bounding_box": {
+                "x1": round(x1, 2),
+                "y1": round(y1, 2),
+                "x2": round(x2, 2),
+                "y2": round(y2, 2)
+            }
+        })
+
+    return {
+        "filename": file.filename,
+        "model": "best.onnx",
+        "image_size": {
+            "width": image.shape[1],
+            "height": image.shape[0]
+        },
+        "detections": detections,
+        "detection_count": len(detections)
+    }
