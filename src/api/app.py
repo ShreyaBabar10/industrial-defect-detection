@@ -2,14 +2,12 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from ultralytics import YOLO
 
 
-# Project root
 project_dir = Path(__file__).resolve().parents[2]
 
-# ONNX model
 model_path = (
     project_dir
     / "models"
@@ -22,14 +20,12 @@ model_path = (
 app = FastAPI(
     title="Industrial Defect Detection API",
     version="1.0.0",
+    description="ONNX-based industrial surface defect detection API.",
 )
 
 
-# Load ONNX model once when the API starts
 if not model_path.exists():
-    raise FileNotFoundError(
-        f"ONNX model not found: {model_path}"
-    )
+    raise FileNotFoundError(f"ONNX model not found: {model_path}")
 
 model = YOLO(str(model_path), task="detect")
 
@@ -51,16 +47,21 @@ def health_check():
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
-
-    # Validate file type
+async def predict(
+    file: UploadFile = File(...),
+    confidence: float = Query(
+        0.25,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence threshold for detections"
+    )
+):
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
             detail="Please upload a valid image file."
         )
 
-    # Read uploaded image
     image_bytes = await file.read()
 
     if not image_bytes:
@@ -69,7 +70,6 @@ async def predict(file: UploadFile = File(...)):
             detail="Uploaded file is empty."
         )
 
-    # Convert bytes to OpenCV image
     image_array = np.frombuffer(image_bytes, dtype=np.uint8)
     image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
@@ -79,28 +79,26 @@ async def predict(file: UploadFile = File(...)):
             detail="Unable to decode the uploaded image."
         )
 
-    # Run ONNX inference
     results = model.predict(
         source=image,
         imgsz=256,
-        conf=0.25,
+        conf=confidence,
         verbose=False
     )
 
     result = results[0]
-
     detections = []
 
     for box in result.boxes:
         class_id = int(box.cls[0])
-        confidence = float(box.conf[0])
+        detection_confidence = float(box.conf[0])
 
         x1, y1, x2, y2 = box.xyxy[0].tolist()
 
         detections.append({
             "class_id": class_id,
             "class_name": result.names[class_id],
-            "confidence": round(confidence, 4),
+            "confidence": round(detection_confidence, 4),
             "bounding_box": {
                 "x1": round(x1, 2),
                 "y1": round(y1, 2),
@@ -110,13 +108,14 @@ async def predict(file: UploadFile = File(...)):
         })
 
     return {
-    "success": True,
-    "filename": file.filename,
-    "model": "best.onnx",
-    "image_size": {
-        "width": image.shape[1],
-        "height": image.shape[0]
-    },
-    "detection_count": len(detections),
-    "detections": detections
-}
+        "success": True,
+        "filename": file.filename,
+        "model": "best.onnx",
+        "confidence_threshold": confidence,
+        "image_size": {
+            "width": image.shape[1],
+            "height": image.shape[0]
+        },
+        "detection_count": len(detections),
+        "detections": detections
+    }
