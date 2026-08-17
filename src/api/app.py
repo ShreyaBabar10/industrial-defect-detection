@@ -17,6 +17,17 @@ model_path = (
     / "best.onnx"
 )
 
+output_dir = (
+    project_dir
+    / "results"
+    / "api_predictions"
+)
+
+output_dir.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
 
 app = FastAPI(
     title="Industrial Defect Detection API",
@@ -30,7 +41,10 @@ if not model_path.exists():
         f"ONNX model not found: {model_path}"
     )
 
-model = YOLO(str(model_path), task="detect")
+model = YOLO(
+    str(model_path),
+    task="detect"
+)
 
 warmup_image = np.zeros(
     (256, 256, 3),
@@ -138,6 +152,22 @@ async def predict(
             }
         })
 
+    annotated_image = result.plot()
+
+    original_name = Path(
+        file.filename or "image.jpg"
+    ).stem
+
+    output_path = (
+        output_dir
+        / f"{original_name}_prediction.jpg"
+    )
+
+    cv2.imwrite(
+        str(output_path),
+        annotated_image
+    )
+
     return {
         "success": True,
         "filename": file.filename,
@@ -152,5 +182,6 @@ async def predict(
             "height": image.shape[0]
         },
         "detection_count": len(detections),
+        "prediction_image": str(output_path),
         "detections": detections
     }
