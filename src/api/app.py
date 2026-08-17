@@ -42,6 +42,24 @@ class PredictResponse(BaseModel):
     detections: list[Detection]
 
 
+class PredictionHistoryItem(BaseModel):
+    timestamp: str
+    filename: str
+    model: str
+    confidence_threshold: float
+    inference_time_ms: float
+    image_size: ImageSize
+    detection_count: int
+    prediction_image: str
+    prediction_url: str
+    detections: list[Detection]
+
+
+class PredictionHistoryResponse(BaseModel):
+    count: int
+    predictions: list[PredictionHistoryItem]
+
+
 project_dir = Path(__file__).resolve().parents[2]
 
 model_path = (
@@ -299,7 +317,10 @@ async def predict(
     }
 
 
-@app.get("/predictions")
+@app.get(
+    "/predictions",
+    response_model=PredictionHistoryResponse
+)
 def get_prediction_history():
     if not history_file.exists():
         return {
