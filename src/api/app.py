@@ -110,12 +110,13 @@ async def predict(file: UploadFile = File(...)):
         })
 
     return {
-        "filename": file.filename,
-        "model": "best.onnx",
-        "image_size": {
-            "width": image.shape[1],
-            "height": image.shape[0]
-        },
-        "detections": detections,
-        "detection_count": len(detections)
-    }
+    "success": True,
+    "filename": file.filename,
+    "model": "best.onnx",
+    "image_size": {
+        "width": image.shape[1],
+        "height": image.shape[0]
+    },
+    "detection_count": len(detections),
+    "detections": detections
+}
