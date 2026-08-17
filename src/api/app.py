@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import time
 
 import cv2
@@ -60,6 +61,11 @@ output_dir = (
 output_dir.mkdir(
     parents=True,
     exist_ok=True
+)
+
+history_file = (
+    output_dir
+    / "prediction_history.jsonl"
 )
 
 
@@ -222,10 +228,56 @@ async def predict(
         / f"{original_name}_prediction.jpg"
     )
 
-    cv2.imwrite(
+    success = cv2.imwrite(
         str(output_path),
         annotated_image
     )
+
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save prediction image."
+        )
+
+    prediction_url = (
+        f"/prediction/{output_path.name}"
+    )
+
+    prediction_record = {
+        "timestamp": time.strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        ),
+        "filename": file.filename,
+        "model": "best.onnx",
+        "confidence_threshold": confidence,
+        "inference_time_ms": round(
+            inference_time_ms,
+            2
+        ),
+        "image_size": {
+            "width": image.shape[1],
+            "height": image.shape[0]
+        },
+        "detection_count": len(detections),
+        "prediction_image": str(output_path),
+        "prediction_url": prediction_url,
+        "detections": detections
+    }
+
+    try:
+        with history_file.open(
+            "a",
+            encoding="utf-8"
+        ) as file_handle:
+            file_handle.write(
+                json.dumps(prediction_record)
+                + "\n"
+            )
+    except OSError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save prediction history: {exc}"
+        ) from exc
 
     return {
         "success": True,
@@ -242,10 +294,43 @@ async def predict(
         },
         "detection_count": len(detections),
         "prediction_image": str(output_path),
-        "prediction_url": (
-            f"/prediction/{output_path.name}"
-        ),
+        "prediction_url": prediction_url,
         "detections": detections
+    }
+
+
+@app.get("/predictions")
+def get_prediction_history():
+    if not history_file.exists():
+        return {
+            "count": 0,
+            "predictions": []
+        }
+
+    predictions = []
+
+    try:
+        with history_file.open(
+            "r",
+            encoding="utf-8"
+        ) as file_handle:
+            for line in file_handle:
+                line = line.strip()
+
+                if line:
+                    predictions.append(
+                        json.loads(line)
+                    )
+
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read prediction history: {exc}"
+        ) from exc
+
+    return {
+        "count": len(predictions),
+        "predictions": predictions
     }
 
 
