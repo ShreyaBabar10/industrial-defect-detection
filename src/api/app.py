@@ -32,6 +32,18 @@ if not model_path.exists():
 
 model = YOLO(str(model_path), task="detect")
 
+warmup_image = np.zeros(
+    (256, 256, 3),
+    dtype=np.uint8
+)
+
+model.predict(
+    source=warmup_image,
+    imgsz=256,
+    conf=0.25,
+    verbose=False
+)
+
 
 @app.get("/")
 def home():
