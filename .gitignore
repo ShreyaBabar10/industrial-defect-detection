@@ -20,3 +20,4 @@ outputs/
 .DS_Store
 Thumbs.db
 results/error_analysis/predictions/
+results/onnx_predictions/
