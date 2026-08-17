@@ -119,12 +119,18 @@ async def predict(
 
     start_time = time.perf_counter()
 
-    results = model.predict(
-        source=image,
-        imgsz=256,
-        conf=confidence,
-        verbose=False
-    )
+    try:
+        results = model.predict(
+            source=image,
+            imgsz=256,
+            conf=confidence,
+            verbose=False
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Model inference failed: {exc}"
+        ) from exc
 
     inference_time_ms = (
         time.perf_counter() - start_time
