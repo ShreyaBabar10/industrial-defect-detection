@@ -4,6 +4,7 @@ import time
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from ultralytics import YOLO
 
 
@@ -45,6 +46,7 @@ model = YOLO(
     str(model_path),
     task="detect"
 )
+
 
 warmup_image = np.zeros(
     (256, 256, 3),
@@ -183,5 +185,24 @@ async def predict(
         },
         "detection_count": len(detections),
         "prediction_image": str(output_path),
+        "prediction_url": (
+            f"/prediction/{output_path.name}"
+        ),
         "detections": detections
     }
+
+
+@app.get("/prediction/{filename}")
+def get_prediction(filename: str):
+    file_path = output_dir / filename
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction image not found."
+        )
+
+    return FileResponse(
+        path=file_path,
+        media_type="image/jpeg"
+    )
