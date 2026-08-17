@@ -5,8 +5,15 @@ import time
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
+from prometheus_client import (
+    Counter,
+    Gauge,
+    Histogram,
+    CONTENT_TYPE_LATEST,
+    generate_latest,
+)
 from ultralytics import YOLO
 
 
@@ -96,6 +103,26 @@ ALLOWED_IMAGE_TYPES = {
 }
 
 
+# Prometheus metrics
+
+prediction_requests = Counter(
+    "defect_detection_requests_total",
+    "Total number of prediction requests"
+)
+
+inference_latency = Histogram(
+    "defect_detection_inference_latency_seconds",
+    "YOLO inference latency in seconds"
+)
+
+service_uptime = Gauge(
+    "defect_detection_service_uptime_seconds",
+    "Time since the API service started"
+)
+
+service_start_time = time.time()
+
+
 app = FastAPI(
     title="Industrial Defect Detection API",
     version="1.0.0",
@@ -107,6 +134,7 @@ if not model_path.exists():
     raise FileNotFoundError(
         f"ONNX model not found: {model_path}"
     )
+
 
 model = YOLO(
     str(model_path),
@@ -151,6 +179,18 @@ def health_check():
     }
 
 
+@app.get("/metrics")
+def metrics():
+    uptime = time.time() - service_start_time
+
+    service_uptime.set(uptime)
+
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
+
 @app.post(
     "/predict",
     response_model=PredictResponse
@@ -164,6 +204,8 @@ async def predict(
         description="Minimum confidence threshold for detections"
     )
 ):
+    prediction_requests.inc()
+
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=400,
@@ -209,6 +251,15 @@ async def predict(
             conf=confidence,
             verbose=False
         )
+
+        inference_time = (
+            time.perf_counter() - start_time
+        )
+
+        inference_latency.observe(
+            inference_time
+        )
+
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -216,8 +267,8 @@ async def predict(
         ) from exc
 
     inference_time_ms = (
-        time.perf_counter() - start_time
-    ) * 1000
+        inference_time * 1000
+    )
 
     result = results[0]
     detections = []
@@ -299,6 +350,7 @@ async def predict(
                 json.dumps(prediction_record)
                 + "\n"
             )
+
     except OSError as exc:
         raise HTTPException(
             status_code=500,
@@ -330,6 +382,7 @@ async def predict(
     response_model=PredictionHistoryResponse
 )
 def get_prediction_history():
+
     if not history_file.exists():
         return {
             "count": 0,
@@ -343,6 +396,7 @@ def get_prediction_history():
             "r",
             encoding="utf-8"
         ) as file_handle:
+
             for line in file_handle:
                 line = line.strip()
 
@@ -365,6 +419,7 @@ def get_prediction_history():
 
 @app.get("/prediction/{filename}")
 def get_prediction(filename: str):
+
     file_path = output_dir / filename
 
     if not file_path.exists():
