@@ -31,7 +31,7 @@ if not model_path.exists():
         f"ONNX model not found: {model_path}"
     )
 
-model = YOLO(str(model_path))
+model = YOLO(str(model_path), task="detect")
 
 
 @app.get("/")
