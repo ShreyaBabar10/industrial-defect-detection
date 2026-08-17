@@ -110,9 +110,28 @@ prediction_requests = Counter(
     "Total number of prediction requests"
 )
 
+successful_predictions = Counter(
+    "defect_detection_successful_predictions_total",
+    "Total number of successful predictions"
+)
+
+failed_predictions = Counter(
+    "defect_detection_failed_predictions_total",
+    "Total number of failed prediction requests"
+)
+
 inference_latency = Histogram(
     "defect_detection_inference_latency_seconds",
-    "YOLO inference latency in seconds"
+    "YOLO inference latency in seconds",
+    buckets=(
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+        2.0,
+        5.0
+    )
 )
 
 service_uptime = Gauge(
@@ -183,7 +202,9 @@ def health_check():
 def metrics():
     uptime = time.time() - service_start_time
 
-    service_uptime.set(uptime)
+    service_uptime.set(
+        uptime
+    )
 
     return Response(
         content=generate_latest(),
@@ -207,6 +228,8 @@ async def predict(
     prediction_requests.inc()
 
     if file.content_type not in ALLOWED_IMAGE_TYPES:
+        failed_predictions.inc()
+
         raise HTTPException(
             status_code=400,
             detail="Unsupported image format. Please upload JPG or PNG."
@@ -215,12 +238,16 @@ async def predict(
     image_bytes = await file.read()
 
     if not image_bytes:
+        failed_predictions.inc()
+
         raise HTTPException(
             status_code=400,
             detail="Uploaded file is empty."
         )
 
     if len(image_bytes) > MAX_FILE_SIZE:
+        failed_predictions.inc()
+
         raise HTTPException(
             status_code=413,
             detail="Image file is too large. Maximum allowed size is 5 MB."
@@ -237,6 +264,8 @@ async def predict(
     )
 
     if image is None:
+        failed_predictions.inc()
+
         raise HTTPException(
             status_code=400,
             detail="Unable to decode the uploaded image."
@@ -252,19 +281,21 @@ async def predict(
             verbose=False
         )
 
-        inference_time = (
-            time.perf_counter() - start_time
-        )
-
-        inference_latency.observe(
-            inference_time
-        )
-
     except Exception as exc:
+        failed_predictions.inc()
+
         raise HTTPException(
             status_code=500,
             detail=f"Model inference failed: {exc}"
         ) from exc
+
+    inference_time = (
+        time.perf_counter() - start_time
+    )
+
+    inference_latency.observe(
+        inference_time
+    )
 
     inference_time_ms = (
         inference_time * 1000
@@ -274,10 +305,17 @@ async def predict(
     detections = []
 
     for box in result.boxes:
-        class_id = int(box.cls[0])
-        detection_confidence = float(box.conf[0])
+        class_id = int(
+            box.cls[0]
+        )
 
-        x1, y1, x2, y2 = box.xyxy[0].tolist()
+        detection_confidence = float(
+            box.conf[0]
+        )
+
+        x1, y1, x2, y2 = (
+            box.xyxy[0].tolist()
+        )
 
         detections.append({
             "class_id": class_id,
@@ -311,6 +349,8 @@ async def predict(
     )
 
     if not success:
+        failed_predictions.inc()
+
         raise HTTPException(
             status_code=500,
             detail="Failed to save prediction image."
@@ -346,16 +386,23 @@ async def predict(
             "a",
             encoding="utf-8"
         ) as file_handle:
+
             file_handle.write(
-                json.dumps(prediction_record)
+                json.dumps(
+                    prediction_record
+                )
                 + "\n"
             )
 
     except OSError as exc:
+        failed_predictions.inc()
+
         raise HTTPException(
             status_code=500,
             detail=f"Failed to save prediction history: {exc}"
         ) from exc
+
+    successful_predictions.inc()
 
     return {
         "success": True,
@@ -405,7 +452,11 @@ def get_prediction_history():
                         json.loads(line)
                     )
 
-    except (OSError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        json.JSONDecodeError
+    ) as exc:
+
         raise HTTPException(
             status_code=500,
             detail=f"Failed to read prediction history: {exc}"
