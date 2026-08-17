@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 
 import cv2
 import numpy as np
@@ -25,7 +26,9 @@ app = FastAPI(
 
 
 if not model_path.exists():
-    raise FileNotFoundError(f"ONNX model not found: {model_path}")
+    raise FileNotFoundError(
+        f"ONNX model not found: {model_path}"
+    )
 
 model = YOLO(str(model_path), task="detect")
 
@@ -70,8 +73,15 @@ async def predict(
             detail="Uploaded file is empty."
         )
 
-    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+    image_array = np.frombuffer(
+        image_bytes,
+        dtype=np.uint8
+    )
+
+    image = cv2.imdecode(
+        image_array,
+        cv2.IMREAD_COLOR
+    )
 
     if image is None:
         raise HTTPException(
@@ -79,12 +89,18 @@ async def predict(
             detail="Unable to decode the uploaded image."
         )
 
+    start_time = time.perf_counter()
+
     results = model.predict(
         source=image,
         imgsz=256,
         conf=confidence,
         verbose=False
     )
+
+    inference_time_ms = (
+        time.perf_counter() - start_time
+    ) * 1000
 
     result = results[0]
     detections = []
@@ -98,7 +114,10 @@ async def predict(
         detections.append({
             "class_id": class_id,
             "class_name": result.names[class_id],
-            "confidence": round(detection_confidence, 4),
+            "confidence": round(
+                detection_confidence,
+                4
+            ),
             "bounding_box": {
                 "x1": round(x1, 2),
                 "y1": round(y1, 2),
@@ -112,6 +131,10 @@ async def predict(
         "filename": file.filename,
         "model": "best.onnx",
         "confidence_threshold": confidence,
+        "inference_time_ms": round(
+            inference_time_ms,
+            2
+        ),
         "image_size": {
             "width": image.shape[1],
             "height": image.shape[0]
