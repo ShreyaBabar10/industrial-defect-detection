@@ -63,6 +63,15 @@ output_dir.mkdir(
 )
 
 
+MAX_FILE_SIZE = 5 * 1024 * 1024
+
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+}
+
+
 app = FastAPI(
     title="Industrial Defect Detection API",
     version="1.0.0",
@@ -123,10 +132,10 @@ async def predict(
         description="Minimum confidence threshold for detections"
     )
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Please upload a valid image file."
+            detail="Unsupported image format. Please upload JPG or PNG."
         )
 
     image_bytes = await file.read()
@@ -135,6 +144,12 @@ async def predict(
         raise HTTPException(
             status_code=400,
             detail="Uploaded file is empty."
+        )
+
+    if len(image_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="Image file is too large. Maximum allowed size is 5 MB."
         )
 
     image_array = np.frombuffer(
