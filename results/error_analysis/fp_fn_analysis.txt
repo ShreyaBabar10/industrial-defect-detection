@@ -1,0 +1,17 @@
+Industrial Defect Detection - FP/FN Error Analysis
+==================================================
+
+IoU threshold: 0.5
+Confidence threshold: 0.25
+
+Class                       TP      FP      FN
+----------------------------------------------
+crazing                     33      19     129
+inclusion                  113      62      46
+patches                    169      37      24
+pitted_surface              57      16      30
+rolled-in_scale             63      43      69
+scratches                   98      65      23
+
+----------------------------------------------
+TOTAL                      533     242     321

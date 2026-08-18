@@ -1,17 +1,21 @@
-YOLO Resolution Comparison
-==========================
+YOLO Resolution Accuracy-Speed Comparison
+==========================================
 
 Baseline 224px
 --------------
-mAP@50:    0.7193
-mAP@50-95: 0.3775
-Precision: 0.6583
-Recall:    0.6725
+mAP@50:       0.7193
+mAP@50-95:    0.3775
+Precision:    0.6583
+Recall:       0.6725
+Latency (ms): 42.17
+Approx FPS:   23.71
 
 Higher Resolution 256px
 -----------------------
-mAP@50:    0.7197
-mAP@50-95: 0.3871
-Precision: 0.6251
-Recall:    0.6839
+mAP@50:       0.7197
+mAP@50-95:    0.3871
+Precision:    0.6251
+Recall:       0.6839
+Latency (ms): 44.03
+Approx FPS:   22.71
 
