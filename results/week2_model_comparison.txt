@@ -1,0 +1,30 @@
+Week 2 YOLO Model Accuracy-Speed Comparison
+============================================
+
+Baseline 224px
+--------------
+mAP@50:       0.7193
+mAP@50-95:    0.3775
+Precision:    0.6583
+Recall:       0.6725
+Latency (ms): 24.94
+Approx FPS:   40.10
+
+Higher Resolution 256px
+-----------------------
+mAP@50:       0.7197
+mAP@50-95:    0.3871
+Precision:    0.6251
+Recall:       0.6839
+Latency (ms): 23.73
+Approx FPS:   42.15
+
+Improved 224px
+--------------
+mAP@50:       0.6973
+mAP@50-95:    0.3678
+Precision:    0.6036
+Recall:       0.6893
+Latency (ms): 23.83
+Approx FPS:   41.96
+

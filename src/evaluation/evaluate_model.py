@@ -10,6 +10,7 @@ project_dir = Path(__file__).resolve().parents[2]
 # Dataset configuration
 data_config = project_dir / "configs" / "data.yaml"
 
+
 # Models to compare
 models = {
     "baseline_224": (
@@ -23,6 +24,13 @@ models = {
         project_dir
         / "models"
         / "neu_defect_detector_256"
+        / "weights"
+        / "best.pt"
+    ),
+    "improved_224": (
+        project_dir
+        / "models"
+        / "neu_defect_detector_improved"
         / "weights"
         / "best.pt"
     ),
@@ -58,8 +66,8 @@ def evaluate_model(model_name, model_path, image_size):
         "Recall": results.box.mr,
     }
 
-    # Warm-up inference
-    sample_image = (
+    # Validation images for latency measurement
+    image_dir = (
         project_dir
         / "Data"
         / "processed"
@@ -68,7 +76,7 @@ def evaluate_model(model_name, model_path, image_size):
         / "val"
     )
 
-    image_files = sorted(sample_image.glob("*.jpg"))
+    image_files = sorted(image_dir.glob("*.jpg"))
 
     if not image_files:
         print("No validation images found for latency measurement.")
@@ -76,6 +84,7 @@ def evaluate_model(model_name, model_path, image_size):
 
     sample = str(image_files[0])
 
+    # Warm-up inference
     model.predict(
         source=sample,
         imgsz=image_size,
@@ -98,19 +107,14 @@ def evaluate_model(model_name, model_path, image_size):
             verbose=False
         )
 
-        total_time += (
-            time.perf_counter() - start_time
-        )
+        total_time += time.perf_counter() - start_time
 
     average_latency_ms = (
         total_time / latency_runs
     ) * 1000
 
     metrics["Latency (ms)"] = average_latency_ms
-
-    metrics["Approx FPS"] = (
-        1000 / average_latency_ms
-    )
+    metrics["Approx FPS"] = 1000 / average_latency_ms
 
     print()
     print(f"===== {model_name} =====")
@@ -118,14 +122,8 @@ def evaluate_model(model_name, model_path, image_size):
     print(f"mAP@50-95:    {metrics['mAP@50-95']:.4f}")
     print(f"Precision:    {metrics['Precision']:.4f}")
     print(f"Recall:       {metrics['Recall']:.4f}")
-    print(
-        f"Latency:      "
-        f"{metrics['Latency (ms)']:.2f} ms"
-    )
-    print(
-        f"Approx FPS:   "
-        f"{metrics['Approx FPS']:.2f}"
-    )
+    print(f"Latency:      {metrics['Latency (ms)']:.2f} ms")
+    print(f"Approx FPS:   {metrics['Approx FPS']:.2f}")
 
     return metrics
 
@@ -141,7 +139,7 @@ def save_comparison(results):
 
     output_file = (
         output_dir
-        / "day5_resolution_comparison.txt"
+        / "week2_model_comparison.txt"
     )
 
     with open(
@@ -151,11 +149,11 @@ def save_comparison(results):
     ) as file:
 
         file.write(
-            "YOLO Resolution Accuracy-Speed Comparison\n"
+            "Week 2 YOLO Model Accuracy-Speed Comparison\n"
         )
 
         file.write(
-            "==========================================\n\n"
+            "============================================\n\n"
         )
 
         for model_name, metrics in results.items():
@@ -200,15 +198,14 @@ def save_comparison(results):
             )
 
     print()
-    print(
-        f"Comparison saved to: {output_file}"
-    )
+    print(f"Comparison saved to: {output_file}")
 
 
 def main():
 
     results = {}
 
+    # Baseline model
     baseline_results = evaluate_model(
         "Baseline 224px",
         models["baseline_224"],
@@ -216,10 +213,9 @@ def main():
     )
 
     if baseline_results:
-        results["Baseline 224px"] = (
-            baseline_results
-        )
+        results["Baseline 224px"] = baseline_results
 
+    # Higher resolution model
     high_resolution_results = evaluate_model(
         "Higher Resolution 256px",
         models["higher_resolution_256"],
@@ -227,9 +223,17 @@ def main():
     )
 
     if high_resolution_results:
-        results["Higher Resolution 256px"] = (
-            high_resolution_results
-        )
+        results["Higher Resolution 256px"] = high_resolution_results
+
+    # Improved / tuned model
+    improved_results = evaluate_model(
+        "Improved 224px",
+        models["improved_224"],
+        224
+    )
+
+    if improved_results:
+        results["Improved 224px"] = improved_results
 
     if results:
         save_comparison(results)
