@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Industrial Defect Detection</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="header">
+    <div>
+        <h1>Industrial Defect Detection</h1>
+        <p>Real-time metal surface inspection using ONNX</p>
+    </div>
+
+    <div id="healthStatus" class="status">
+        Checking API...
+    </div>
+</header>
+
+
+<main class="container">
+
+    <section class="upload-card">
+
+        <h2>Inspect Metal Surface</h2>
+
+        <p class="description">
+            Upload a metal surface image to detect NEU surface defects.
+        </p>
+
+        <label class="upload-area" for="imageInput">
+            <span class="upload-icon">+</span>
+            <span>Choose metal surface image</span>
+            <small>JPG, JPEG or PNG — maximum 5 MB</small>
+        </label>
+
+        <input
+            type="file"
+            id="imageInput"
+            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+            hidden
+        >
+
+        <div class="controls">
+
+            <label for="confidence">
+                Confidence threshold
+            </label>
+
+            <div class="confidence-row">
+                <input
+                    type="range"
+                    id="confidence"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value="0.25"
+                >
+
+                <span id="confidenceValue">0.25</span>
+            </div>
+
+        </div>
+
+        <button id="detectButton" disabled>
+            Detect Defects
+        </button>
+
+    </section>
+
+
+    <section id="previewSection" class="results-section hidden">
+
+        <div class="image-grid">
+
+            <div class="image-card">
+                <h3>Input Image</h3>
+                <img id="inputPreview" alt="Input image">
+            </div>
+
+            <div class="image-card">
+                <h3>Detection Result</h3>
+                <img id="resultImage" alt="Detection result">
+            </div>
+
+        </div>
+
+
+        <div class="summary-grid">
+
+            <div class="metric-card">
+                <span>Status</span>
+                <strong id="detectionStatus">-</strong>
+            </div>
+
+            <div class="metric-card">
+                <span>Defects Found</span>
+                <strong id="detectionCount">-</strong>
+            </div>
+
+            <div class="metric-card">
+                <span>Inference Time</span>
+                <strong id="inferenceTime">-</strong>
+            </div>
+
+            <div class="metric-card">
+                <span>Model</span>
+                <strong id="modelName">-</strong>
+            </div>
+
+        </div>
+
+
+        <div class="detections-card">
+
+            <h2>Detected Defects</h2>
+
+            <div id="detectionsContainer">
+                No detections.
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section id="errorSection" class="error hidden">
+        <strong>Error:</strong>
+        <span id="errorMessage"></span>
+    </section>
+
+</main>
+
+
+<script src="app.js"></script>
+
+</body>
+</html>
