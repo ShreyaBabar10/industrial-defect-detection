@@ -36,6 +36,22 @@ class ImageSize(BaseModel):
     height: int
 
 
+class PLCDetection(BaseModel):
+    class_id: int
+    class_name: str
+    confidence: float
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+
+class PLCPayload(BaseModel):
+    defect_detected: bool
+    defect_count: int
+    detections: list[PLCDetection]
+
+
 class PredictResponse(BaseModel):
     success: bool
     filename: str
@@ -47,6 +63,7 @@ class PredictResponse(BaseModel):
     prediction_image: str
     prediction_url: str
     detections: list[Detection]
+    plc_payload: PLCPayload
 
 
 class PredictionHistoryItem(BaseModel):
@@ -60,6 +77,7 @@ class PredictionHistoryItem(BaseModel):
     prediction_image: str
     prediction_url: str
     detections: list[Detection]
+    plc_payload: PLCPayload | None = None
 
 
 class PredictionHistoryResponse(BaseModel):
@@ -702,6 +720,33 @@ def draw_detections(
     return annotated_image
 
 
+def build_plc_payload(detections):
+    """Build a PLC-ready payload from model detections.
+
+    This endpoint prepares structured data for a future PLC/controller.
+    It does not communicate with physical PLC hardware.
+    """
+    plc_detections = []
+
+    for detection in detections:
+        box = detection["bounding_box"]
+        plc_detections.append({
+            "class_id": detection["class_id"],
+            "class_name": detection["class_name"],
+            "confidence": detection["confidence"],
+            "x1": box["x1"],
+            "y1": box["y1"],
+            "x2": box["x2"],
+            "y2": box["y2"],
+        })
+
+    return {
+        "defect_detected": len(plc_detections) > 0,
+        "defect_count": len(plc_detections),
+        "detections": plc_detections,
+    }
+
+
 # Warm up ONNX Runtime.
 warmup_image = np.zeros(
     (IMAGE_SIZE, IMAGE_SIZE, 3),
@@ -898,6 +943,8 @@ async def predict(
         detections
     )
 
+    plc_payload = build_plc_payload(detections)
+
     original_name = Path(
         file.filename or "image.jpg"
     ).stem
@@ -943,7 +990,8 @@ async def predict(
         "detection_count": len(detections),
         "prediction_image": str(output_path),
         "prediction_url": prediction_url,
-        "detections": detections
+        "detections": detections,
+        "plc_payload": plc_payload
     }
 
     try:
@@ -987,8 +1035,52 @@ async def predict(
         "detection_count": len(detections),
         "prediction_image": str(output_path),
         "prediction_url": prediction_url,
-        "detections": detections
+        "detections": detections,
+        "plc_payload": plc_payload
     }
+
+
+@app.get(
+    "/plc/latest",
+    response_model=PLCPayload
+)
+def get_latest_plc_payload():
+    """Return the latest stored detection in PLC-ready format.
+
+    No physical PLC communication is performed by this endpoint.
+    """
+    if not history_file.exists():
+        return {
+            "defect_detected": False,
+            "defect_count": 0,
+            "detections": []
+        }
+
+    latest_record = None
+
+    try:
+        with history_file.open("r", encoding="utf-8") as file_handle:
+            for line in file_handle:
+                line = line.strip()
+                if line:
+                    latest_record = json.loads(line)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to read latest prediction: {exc}"
+        ) from exc
+
+    if latest_record is None:
+        return {
+            "defect_detected": False,
+            "defect_count": 0,
+            "detections": []
+        }
+
+    if latest_record.get("plc_payload") is not None:
+        return latest_record["plc_payload"]
+
+    return build_plc_payload(latest_record.get("detections", []))
 
 
 @app.get(
